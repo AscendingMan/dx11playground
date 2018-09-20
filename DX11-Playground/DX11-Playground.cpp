@@ -8,9 +8,10 @@
 #pragma comment(lib, "D3Dcompiler.lib")
 
 #define MAX_LOADSTRING 100
+//#define VERT_COUNT 4
 
 // define the screen resolution
-#define SCREEN_WIDTH  800
+#define SCREEN_WIDTH  600
 #define SCREEN_HEIGHT 600
 
 // Global Variables:
@@ -26,6 +27,8 @@ ID3D11VertexShader *pVS;    // the vertex shader
 ID3D11PixelShader *pPS;     // the pixel shader
 ID3D11InputLayout *pLayout;    
 ID3D11Buffer *pVBuffer;    // buffer
+
+int VERT_COUNT = 4;
 
 struct VERTEX
 {
@@ -148,9 +151,10 @@ void InitGraphics()
 		//{ 0.0f, 0.5f, 0.0f, *v1},
 		//{ 0.45f, -0.5, 0.0f, *v2},
 		//{ -0.45f, -0.5f, 0.0f, *v3}
-		{ 0.0f, 0.5f, 0.0f, 1.0f, 0.0f, 0.5f, 0.0f },
-		{ 0.45f, -0.5, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-		{ -0.45f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f }
+		{ -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.5f, 0.0f },
+		{ 0.5f, 0.5, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
+		{ -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f },
+		{ 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f }
 	};
 
 
@@ -161,7 +165,7 @@ void InitGraphics()
 	ZeroMemory(&bd, sizeof(bd));
 
 	bd.Usage = D3D11_USAGE_DYNAMIC;                // write access access by CPU and GPU
-	bd.ByteWidth = sizeof(VERTEX) * 3;             // size is the VERTEX struct * 3
+	bd.ByteWidth = sizeof(VERTEX) * VERT_COUNT;             // size is the VERTEX struct * 3
 	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;       // use as a vertex buffer
 	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;    // allow CPU to write in buffer
 
@@ -203,10 +207,10 @@ void RenderFrame()
 	devcon->IASetVertexBuffers(0, 1, &pVBuffer, &stride, &offset);
 
 	// select which primtive type we are using
-	devcon->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	devcon->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
 	// draw the vertex buffer to the back buffer
-	devcon->Draw(3, 0);
+	devcon->Draw(VERT_COUNT, 0);
 
 	// switch the back buffer and the front buffer
 	swapchain->Present(0, 0);
