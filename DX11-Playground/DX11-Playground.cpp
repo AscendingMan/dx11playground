@@ -48,6 +48,17 @@ XMVECTOR camPosition;
 XMVECTOR camTarget;
 XMVECTOR camUp;
 
+//tranformation matrix declarations
+XMMATRIX cube1World;
+XMMATRIX cube2World;
+
+XMMATRIX Rotation;
+XMMATRIX Scale;
+XMMATRIX Translation;
+float rot = 0.01f;
+
+void UpdateScene();
+
 //struct to hold the constant buffer -- must match the layout in the respective effects file
 struct cbPerObject
 {
@@ -178,24 +189,61 @@ void InitGraphics()
 	// create a triangle using the VERTEX struct
 	VERTEX OurVertices[] =
 	{
-		{ -0.5f, 0.5f, 3.5f, 1.0f, 0.0f, 0.5f, 0.0f },
-		{ 0.5f, 0.5, 3.5f, 0.0f, 1.0f, 0.0f, 0.0f },
-		{ 0.5f, -0.5f, 3.5f, 0.0f, 0.0f, 1.0f, 0.0f },
-		{ -0.5f, -0.5f,  3.5f, 1.0f, 0.0f, 1.0f, 0.0f }
+		//{ -0.5f, 0.5f, 3.5f, 1.0f, 0.0f, 0.5f, 0.0f },
+		//{ 0.5f, 0.5, 3.5f, 0.0f, 1.0f, 0.0f, 0.0f },
+		//{ 0.5f, -0.5f, 3.5f, 0.0f, 0.0f, 1.0f, 0.0f },
+		//{ -0.5f, -0.5f,  3.5f, 1.0f, 0.0f, 1.0f, 0.0f }
+		(-1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f),
+		(-1.0f, +1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 1.0f),
+		(+1.0f, +1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f),
+		(+1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f),
+		(-1.0f, -1.0f, +1.0f, 0.0f, 1.0f, 1.0f, 1.0f),
+		(-1.0f, +1.0f, +1.0f, 1.0f, 1.0f, 1.0f, 1.0f),
+		(+1.0f, +1.0f, +1.0f, 1.0f, 0.0f, 1.0f, 1.0f),
+		(+1.0f, -1.0f, +1.0f, 1.0f, 0.0f, 0.0f, 1.0f),
 	};
 
 	//index layout
+	//triangle indices
+	//DWORD indices[] = {
+	//	0, 1, 2,
+	//	0, 2, 3,
+	//};
+
+	//cube indices
 	DWORD indices[] = {
+		// front face
 		0, 1, 2,
 		0, 2, 3,
+
+		// back face
+		4, 6, 5,
+		4, 7, 6,
+
+		// left face
+		4, 5, 1,
+		4, 1, 0,
+
+		// right face
+		3, 2, 6,
+		3, 6, 7,
+
+		// top face
+		1, 5, 6,
+		1, 6, 2,
+
+		// bottom face
+		4, 0, 3,
+		4, 3, 7
 	};
+
 
 	// create the vertex buffer
 	D3D11_BUFFER_DESC vertexBufferDesc;
 	ZeroMemory(&vertexBufferDesc, sizeof(vertexBufferDesc));
 
 	vertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;                // write access access by CPU and GPU
-	vertexBufferDesc.ByteWidth = sizeof(VERTEX) * VERT_COUNT;             // size is the VERTEX struct * 3
+	vertexBufferDesc.ByteWidth = sizeof(VERTEX) * 8;             // size is the VERTEX struct * 3
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;       // use as a vertex buffer
 	vertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;    // allow CPU to write in buffer
 	vertexBufferDesc.StructureByteStride = sizeof(VERTEX);
@@ -210,7 +258,9 @@ void InitGraphics()
 	ZeroMemory(&indexBufferDesc, sizeof(indexBufferDesc));
 
 	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	indexBufferDesc.ByteWidth = sizeof(DWORD) * 2 * 3;
+	//changing from a triangle description to a cube description
+	//indexBufferDesc.ByteWidth = sizeof(DWORD) * 2 * 3;
+	indexBufferDesc.ByteWidth = sizeof(DWORD) * 12 * 3;
 	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	indexBufferDesc.CPUAccessFlags = 0;
 	indexBufferDesc.MiscFlags = 0;
@@ -247,7 +297,7 @@ void InitGraphics()
 	dev->CreateBuffer(&cbbd, NULL, &cbPerObjectBuffer);
 
 	//setting up camera position
-	camPosition = XMVectorSet(0.0f, 0.0f, -0.5f, 0.0f);
+	camPosition = XMVectorSet(0.0f, 3.0f, -8.0f, 0.0f);
 	camTarget = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
 	camUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
@@ -297,6 +347,21 @@ void RenderFrame()
 	// select which vertex buffer to display
 	UINT stride = sizeof(VERTEX);
 	UINT offset = 0;
+
+	//rotate stuff???
+	WVP = cube1World * camView * camProjection;
+	cbPerObj.WVP = XMMatrixTranspose(WVP);
+	devcon->UpdateSubresource(cbPerObjectBuffer, 0, NULL, &cbPerObj, 0, 0);
+	devcon->VSSetConstantBuffers(0, 1, &cbPerObjectBuffer);
+	
+	devcon->DrawIndexed(36, 0, 0);
+
+	WVP = cube2World * camView * camProjection;
+	cbPerObj.WVP = XMMatrixTranspose(WVP);
+	devcon->UpdateSubresource(cbPerObjectBuffer, 0, NULL, &cbPerObj, 0, 0);
+	devcon->VSSetConstantBuffers(0, 1, &cbPerObjectBuffer);
+
+	devcon->DrawIndexed(36, 0, 0);
 
 	devcon->IASetIndexBuffer(squareIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 	devcon->IASetVertexBuffers(0, 1, &pVBuffer, &stride, &offset);
@@ -374,6 +439,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 				if (msg.message == WM_QUIT)
 					break;
 			}
+
+			UpdateScene();
 			RenderFrame();
 		}
 	}
@@ -383,7 +450,35 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     return (int) msg.wParam;
 }
 
+//update the scene with cube trandorms
+void UpdateScene()
+{
+	//Keep the cubes rotating
+	rot += .0005f;
+	if (rot > 6.26f)
+		rot = 0.0f;
 
+	//Reset cube1World
+	cube1World = XMMatrixIdentity();
+
+	//Define cube1's world space matrix
+	XMVECTOR rotaxis = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	Rotation = XMMatrixRotationAxis(rotaxis, rot);
+	Translation = XMMatrixTranslation(0.0f, 0.0f, 4.0f);
+
+	//Set cube1's world space using the transformations
+	cube1World = Translation * Rotation;
+
+	//Reset cube2World
+	cube2World = XMMatrixIdentity();
+
+	//Define cube2's world space matrix
+	Rotation = XMMatrixRotationAxis(rotaxis, -rot);
+	Scale = XMMatrixScaling(1.3f, 1.3f, 1.3f);
+
+	//Set cube2's world space matrix
+	cube2World = Rotation * Scale;
+}
 
 //
 //  FUNCTION: MyRegisterClass()
