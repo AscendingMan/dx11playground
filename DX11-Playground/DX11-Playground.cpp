@@ -7,6 +7,8 @@
 
 #pragma comment(lib, "D3Dcompiler.lib")
 
+using namespace DirectX;
+
 #define MAX_LOADSTRING 100
 #define VERT_COUNT 4
 
@@ -29,6 +31,31 @@ ID3D11InputLayout *pLayout;
 ID3D11Buffer *pVBuffer;    // buffer
 ID3D11Buffer* squareIndexBuffer;
 
+//depth buffer stuff
+ID3D11DepthStencilView* depthStencilView;
+ID3D11Texture2D* depthStencilBuffer;
+
+//constant buffer
+ID3D11Buffer* cbPerObjectBuffer;
+
+//non-scalar values to defined viewport, camera, world, etc
+XMMATRIX WVP;
+XMMATRIX World;
+XMMATRIX camView;
+XMMATRIX camProjection;
+
+XMVECTOR camPosition;
+XMVECTOR camTarget;
+XMVECTOR camUp;
+
+//struct to hold the constant buffer -- must match the layout in the respective effects file
+struct cbPerObject
+{
+	XMMATRIX  WVP;
+};
+
+cbPerObject cbPerObj;
+
 struct VERTEX
 {
 	FLOAT X, Y, Z;      // position
@@ -47,6 +74,8 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+
+
 
 #pragma region 
 //dx stuff
@@ -92,7 +121,7 @@ void InitD3D(HWND hWnd)
 	pBackBuffer->Release();
 
 	// set the render target as the back buffer
-	devcon->OMSetRenderTargets(1, &backbuffer, NULL);
+	devcon->OMSetRenderTargets(1, &backbuffer, depthStencilView);
 
 	// Set the viewport
 	D3D11_VIEWPORT viewport;
@@ -100,6 +129,8 @@ void InitD3D(HWND hWnd)
 
 	viewport.TopLeftX = 0;
 	viewport.TopLeftY = 0;
+	viewport.MinDepth = 0.0f;
+	viewport.MaxDepth = 1.0f;
 	viewport.Width = SCREEN_WIDTH;
 	viewport.Height = SCREEN_HEIGHT;
 
@@ -147,10 +178,10 @@ void InitGraphics()
 	// create a triangle using the VERTEX struct
 	VERTEX OurVertices[] =
 	{
-		{ -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.5f, 0.0f },
-		{ 0.5f, 0.5, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-		{ 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f },
-		{ -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f }
+		{ -0.5f, 0.5f, 3.5f, 1.0f, 0.0f, 0.5f, 0.0f },
+		{ 0.5f, 0.5, 3.5f, 0.0f, 1.0f, 0.0f, 0.0f },
+		{ 0.5f, -0.5f, 3.5f, 0.0f, 0.0f, 1.0f, 0.0f },
+		{ -0.5f, -0.5f,  3.5f, 1.0f, 0.0f, 1.0f, 0.0f }
 	};
 
 	//index layout
@@ -186,6 +217,50 @@ void InitGraphics()
 	
 	dev->CreateBuffer(&indexBufferDesc, &initData, &squareIndexBuffer);
 
+	//Depth stencil buffer description
+	D3D11_TEXTURE2D_DESC depthStencilDesc;
+	depthStencilDesc.Width = SCREEN_WIDTH;
+	depthStencilDesc.Height = SCREEN_HEIGHT;
+	depthStencilDesc.MipLevels = 1;
+	depthStencilDesc.ArraySize = 1;
+	depthStencilDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	depthStencilDesc.SampleDesc.Count = 1;
+	depthStencilDesc.SampleDesc.Quality = 0;
+	depthStencilDesc.Usage = D3D11_USAGE_DEFAULT;
+	depthStencilDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	depthStencilDesc.CPUAccessFlags = 0;
+	depthStencilDesc.MiscFlags = 0;
+
+	dev->CreateTexture2D(&depthStencilDesc, NULL, &depthStencilBuffer);
+	dev->CreateDepthStencilView(depthStencilBuffer, NULL, &depthStencilView);
+
+	//creating the constant buffer
+	D3D11_BUFFER_DESC cbbd;
+	ZeroMemory(&cbbd, sizeof(D3D11_BUFFER_DESC));
+	
+	cbbd.Usage = D3D11_USAGE_DEFAULT;
+	cbbd.ByteWidth = sizeof(cbPerObject);
+	cbbd.BindFlags = D3D10_BIND_CONSTANT_BUFFER;
+	cbbd.CPUAccessFlags = 0;
+	cbbd.MiscFlags = 0;
+
+	dev->CreateBuffer(&cbbd, NULL, &cbPerObjectBuffer);
+
+	//setting up camera position
+	camPosition = XMVectorSet(0.0f, 0.0f, -0.5f, 0.0f);
+	camTarget = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+	camUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+	camView = XMMatrixLookAtLH(camPosition, camTarget, camUp);
+	camProjection = XMMatrixPerspectiveFovLH(0.4f*3.14f, (float)SCREEN_WIDTH / SCREEN_WIDTH, 1.0f, 1000.0f);
+
+	World = XMMatrixIdentity();
+	WVP = World * camView * camProjection;
+
+	cbPerObj.WVP = XMMatrixTranspose(WVP);
+	devcon->UpdateSubresource(cbPerObjectBuffer, 0, NULL, &cbPerObj, 0, 0);
+	devcon->VSSetConstantBuffers(0, 1, &cbPerObjectBuffer);
+
 	// copy the vertices into the buffer
 	D3D11_MAPPED_SUBRESOURCE ms;
 	devcon->Map(pVBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);    // map the buffer
@@ -205,6 +280,9 @@ void CleanD3D()
 	pVBuffer->Release();
 	swapchain->Release();
 	backbuffer->Release();
+	depthStencilView->Release();
+	depthStencilBuffer->Release();
+	cbPerObjectBuffer->Release();
 	dev->Release();
 	devcon->Release();
 }
@@ -214,6 +292,7 @@ void RenderFrame()
 	float color[4] = { 0.0f, 0.2f, 0.4f, 1.0f };
 	// clear the back buffer to a deep blue
 	devcon->ClearRenderTargetView(backbuffer, color);
+	devcon->ClearDepthStencilView(depthStencilView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
 	// select which vertex buffer to display
 	UINT stride = sizeof(VERTEX);
