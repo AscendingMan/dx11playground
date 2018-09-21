@@ -27,6 +27,8 @@ ID3D11VertexShader *pVS;    // the vertex shader
 ID3D11PixelShader *pPS;     // the pixel shader
 ID3D11InputLayout *pLayout;    
 ID3D11Buffer *pVBuffer;    // buffer
+ID3D11Buffer* squareIndexBuffer;
+ID3D11Buffer* squareVertBuffer;
 
 int VERT_COUNT = 4;
 
@@ -140,6 +142,7 @@ void InitPipeline()
 
 void InitGraphics()
 {
+
 	//init some vertex values (needed here since D3DXCOLOR isn't used)
 	float v1[4] = { 1.0f, 0.0f, 0.5f, 0.0f };
 	float v2[4] = { 0.0f, 1.0f, 0.0f, 0.0f };
@@ -148,17 +151,19 @@ void InitGraphics()
 	// create a triangle using the VERTEX struct
 	VERTEX OurVertices[] =
 	{
-		//{ 0.0f, 0.5f, 0.0f, *v1},
-		//{ 0.45f, -0.5, 0.0f, *v2},
-		//{ -0.45f, -0.5f, 0.0f, *v3}
 		{ -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.5f, 0.0f },
 		{ 0.5f, 0.5, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f },
-		{ -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f },
-		{ 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f }
+		{ 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f },
+		{ -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f }
 	};
 
+	//set up index buffer
 
 
+	DWORD indices[] = {
+		0, 1, 2,
+		0, 2, 3,
+	};
 
 	// create the vertex buffer
 	D3D11_BUFFER_DESC bd;
@@ -168,8 +173,25 @@ void InitGraphics()
 	bd.ByteWidth = sizeof(VERTEX) * VERT_COUNT;             // size is the VERTEX struct * 3
 	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;       // use as a vertex buffer
 	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;    // allow CPU to write in buffer
+	bd.StructureByteStride = sizeof(VERTEX);
 
-	dev->CreateBuffer(&bd, NULL, &pVBuffer);       // create the buffer
+	D3D11_BUFFER_DESC indexBufferDesc;
+	ZeroMemory(&indexBufferDesc, sizeof(indexBufferDesc));
+
+	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	indexBufferDesc.ByteWidth = sizeof(DWORD) * 2 * 3;
+	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	indexBufferDesc.CPUAccessFlags = 0;
+	indexBufferDesc.MiscFlags = 0;
+	
+	D3D11_SUBRESOURCE_DATA initData;
+	initData.pSysMem = indices;
+	initData.SysMemPitch = 0;
+	initData.SysMemSlicePitch = 0;
+
+	dev->CreateBuffer(&indexBufferDesc, &initData, &squareIndexBuffer);
+
+	dev->CreateBuffer(&bd, &initData, &pVBuffer);       // create the buffer
 
 
 	// copy the vertices into the buffer
@@ -204,13 +226,16 @@ void RenderFrame()
 	// select which vertex buffer to display
 	UINT stride = sizeof(VERTEX);
 	UINT offset = 0;
+	devcon->IASetIndexBuffer(squareIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 	devcon->IASetVertexBuffers(0, 1, &pVBuffer, &stride, &offset);
+	
 
 	// select which primtive type we are using
-	devcon->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	devcon->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// draw the vertex buffer to the back buffer
-	devcon->Draw(VERT_COUNT, 0);
+	//devcon->Draw(VERT_COUNT, 0);
+	devcon->DrawIndexed(6, 0, 0);
 
 	// switch the back buffer and the front buffer
 	swapchain->Present(0, 0);
