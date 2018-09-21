@@ -8,7 +8,7 @@
 #pragma comment(lib, "D3Dcompiler.lib")
 
 #define MAX_LOADSTRING 100
-//#define VERT_COUNT 4
+#define VERT_COUNT 4
 
 // define the screen resolution
 #define SCREEN_WIDTH  600
@@ -28,9 +28,6 @@ ID3D11PixelShader *pPS;     // the pixel shader
 ID3D11InputLayout *pLayout;    
 ID3D11Buffer *pVBuffer;    // buffer
 ID3D11Buffer* squareIndexBuffer;
-ID3D11Buffer* squareVertBuffer;
-
-int VERT_COUNT = 4;
 
 struct VERTEX
 {
@@ -136,7 +133,6 @@ void InitPipeline()
 	};
 
 	dev->CreateInputLayout(ied, 2, VS->GetBufferPointer(), VS->GetBufferSize(), &pLayout);
-	
 	devcon->IASetInputLayout(pLayout);
 }
 
@@ -157,23 +153,27 @@ void InitGraphics()
 		{ -0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f }
 	};
 
-	//set up index buffer
-
-
+	//index layout
 	DWORD indices[] = {
 		0, 1, 2,
 		0, 2, 3,
 	};
 
 	// create the vertex buffer
-	D3D11_BUFFER_DESC bd;
-	ZeroMemory(&bd, sizeof(bd));
+	D3D11_BUFFER_DESC vertexBufferDesc;
+	ZeroMemory(&vertexBufferDesc, sizeof(vertexBufferDesc));
 
-	bd.Usage = D3D11_USAGE_DYNAMIC;                // write access access by CPU and GPU
-	bd.ByteWidth = sizeof(VERTEX) * VERT_COUNT;             // size is the VERTEX struct * 3
-	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;       // use as a vertex buffer
-	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;    // allow CPU to write in buffer
-	bd.StructureByteStride = sizeof(VERTEX);
+	vertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;                // write access access by CPU and GPU
+	vertexBufferDesc.ByteWidth = sizeof(VERTEX) * VERT_COUNT;             // size is the VERTEX struct * 3
+	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;       // use as a vertex buffer
+	vertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;    // allow CPU to write in buffer
+	vertexBufferDesc.StructureByteStride = sizeof(VERTEX);
+
+	D3D11_SUBRESOURCE_DATA initData;
+	initData.pSysMem = indices;
+	initData.SysMemPitch = 0;
+	initData.SysMemSlicePitch = 0;
+	dev->CreateBuffer(&vertexBufferDesc, &initData, &pVBuffer);       // create the buffer
 
 	D3D11_BUFFER_DESC indexBufferDesc;
 	ZeroMemory(&indexBufferDesc, sizeof(indexBufferDesc));
@@ -184,15 +184,7 @@ void InitGraphics()
 	indexBufferDesc.CPUAccessFlags = 0;
 	indexBufferDesc.MiscFlags = 0;
 	
-	D3D11_SUBRESOURCE_DATA initData;
-	initData.pSysMem = indices;
-	initData.SysMemPitch = 0;
-	initData.SysMemSlicePitch = 0;
-
 	dev->CreateBuffer(&indexBufferDesc, &initData, &squareIndexBuffer);
-
-	dev->CreateBuffer(&bd, &initData, &pVBuffer);       // create the buffer
-
 
 	// copy the vertices into the buffer
 	D3D11_MAPPED_SUBRESOURCE ms;
@@ -226,15 +218,15 @@ void RenderFrame()
 	// select which vertex buffer to display
 	UINT stride = sizeof(VERTEX);
 	UINT offset = 0;
+
 	devcon->IASetIndexBuffer(squareIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 	devcon->IASetVertexBuffers(0, 1, &pVBuffer, &stride, &offset);
 	
-
 	// select which primtive type we are using
 	devcon->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// draw the vertex buffer to the back buffer
-	//devcon->Draw(VERT_COUNT, 0);
+	//devcon->Draw(VERT_COUNT, 0); //Only DrawIndexed works with index buffers!!!
 	devcon->DrawIndexed(6, 0, 0);
 
 	// switch the back buffer and the front buffer
