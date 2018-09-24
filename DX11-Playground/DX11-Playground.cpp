@@ -113,7 +113,7 @@ void InitD3D(HWND hWnd)
 	D3D11CreateDeviceAndSwapChain(NULL,
 		D3D_DRIVER_TYPE_HARDWARE,
 		NULL,
-		NULL,
+		D3D11_CREATE_DEVICE_DEBUG || D3D11_CREATE_DEVICE_DEBUGGABLE,
 		NULL,
 		NULL,
 		D3D11_SDK_VERSION,
@@ -145,7 +145,29 @@ void InitD3D(HWND hWnd)
 	viewport.Width = SCREEN_WIDTH;
 	viewport.Height = SCREEN_HEIGHT;
 
+	//rasterizer state
+	//ID3D11RasterizerState *g_pRasterState;
+
+	//D3D11_RASTERIZER_DESC rasterizerState;
+	//rasterizerState.FillMode = D3D11_FILL_SOLID;
+	//rasterizerState.CullMode = D3D11_CULL_FRONT;
+	//rasterizerState.FrontCounterClockwise = true;
+	//rasterizerState.DepthBias = false;
+	//rasterizerState.DepthBiasClamp = 0;
+	//rasterizerState.SlopeScaledDepthBias = 0;
+	//rasterizerState.DepthClipEnable = true;
+	//rasterizerState.ScissorEnable = true;
+	//rasterizerState.MultisampleEnable = false;
+	//rasterizerState.AntialiasedLineEnable = false;
+	////rasterizerState.ForcedSampleCount = 0;
+	//dev->CreateRasterizerState(&rasterizerState, &g_pRasterState);
+	//devcon->RSSetState(g_pRasterState);
+	//
+
 	devcon->RSSetViewports(1, &viewport);
+
+
+
 
 	InitPipeline();
 	InitGraphics();
@@ -174,41 +196,25 @@ void InitPipeline()
 			D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 
-	dev->CreateInputLayout(ied, 2, VS->GetBufferPointer(), VS->GetBufferSize(), &pLayout);
+	dev->CreateInputLayout(ied, ARRAYSIZE(ied), VS->GetBufferPointer(), VS->GetBufferSize(), &pLayout);
 	devcon->IASetInputLayout(pLayout);
 }
 
 void InitGraphics()
 {
 
-	//init some vertex values (needed here since D3DXCOLOR isn't used)
-	float v1[4] = { 1.0f, 0.0f, 0.5f, 0.0f };
-	float v2[4] = { 0.0f, 1.0f, 0.0f, 0.0f };
-	float v3[4] = { 0.0f, 0.0f, 1.0f, 0.0f };
-
 	// create a triangle using the VERTEX struct
 	VERTEX OurVertices[] =
 	{
-		//{ -0.5f, 0.5f, 3.5f, 1.0f, 0.0f, 0.5f, 0.0f },
-		//{ 0.5f, 0.5, 3.5f, 0.0f, 1.0f, 0.0f, 0.0f },
-		//{ 0.5f, -0.5f, 3.5f, 0.0f, 0.0f, 1.0f, 0.0f },
-		//{ -0.5f, -0.5f,  3.5f, 1.0f, 0.0f, 1.0f, 0.0f }
-		(-1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f),
-		(-1.0f, +1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 1.0f),
-		(+1.0f, +1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f),
-		(+1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f),
-		(-1.0f, -1.0f, +1.0f, 0.0f, 1.0f, 1.0f, 1.0f),
-		(-1.0f, +1.0f, +1.0f, 1.0f, 1.0f, 1.0f, 1.0f),
-		(+1.0f, +1.0f, +1.0f, 1.0f, 0.0f, 1.0f, 1.0f),
-		(+1.0f, -1.0f, +1.0f, 1.0f, 0.0f, 0.0f, 1.0f),
+		{-1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+		{-1.0f, +1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 1.0f},
+		{+1.0f, +1.0f, -1.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+		{+1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
+		{-1.0f, -1.0f, +1.0f, 0.0f, 1.0f, 1.0f, 1.0f},
+		{-1.0f, +1.0f, +1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+		{+1.0f, +1.0f, +1.0f, 1.0f, 0.0f, 1.0f, 1.0f},
+		{+1.0f, -1.0f, +1.0f, 1.0f, 0.0f, 0.0f, 1.0f}
 	};
-
-	//index layout
-	//triangle indices
-	//DWORD indices[] = {
-	//	0, 1, 2,
-	//	0, 2, 3,
-	//};
 
 	//cube indices
 	DWORD indices[] = {
@@ -243,24 +249,29 @@ void InitGraphics()
 	ZeroMemory(&vertexBufferDesc, sizeof(vertexBufferDesc));
 
 	vertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;                // write access access by CPU and GPU
-	vertexBufferDesc.ByteWidth = sizeof(VERTEX) * 8;             // size is the VERTEX struct * 3
+	vertexBufferDesc.ByteWidth = sizeof(VERTEX) * 8;             // size is the VERTEX struct * 8
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;       // use as a vertex buffer
 	vertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;    // allow CPU to write in buffer
 	vertexBufferDesc.StructureByteStride = sizeof(VERTEX);
 
+	D3D11_SUBRESOURCE_DATA vertData;
+	ZeroMemory(&vertData, sizeof(vertData));
+	vertData.pSysMem = OurVertices;
+	dev->CreateBuffer(&vertexBufferDesc, &vertData, &pVBuffer);       // create the buffer
+
+
 	D3D11_SUBRESOURCE_DATA initData;
+	ZeroMemory(&initData, sizeof(initData));
 	initData.pSysMem = indices;
 	initData.SysMemPitch = 0;
 	initData.SysMemSlicePitch = 0;
-	dev->CreateBuffer(&vertexBufferDesc, &initData, &pVBuffer);       // create the buffer
+	//dev->CreateBuffer(&vertexBufferDesc, &initData, &pVBuffer);       // create the buffer
 
 	D3D11_BUFFER_DESC indexBufferDesc;
 	ZeroMemory(&indexBufferDesc, sizeof(indexBufferDesc));
 
 	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	//changing from a triangle description to a cube description
-	//indexBufferDesc.ByteWidth = sizeof(DWORD) * 2 * 3;
-	indexBufferDesc.ByteWidth = sizeof(DWORD) * 12 * 3;
+	indexBufferDesc.ByteWidth = sizeof(DWORD) * 3 * 12;
 	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	indexBufferDesc.CPUAccessFlags = 0;
 	indexBufferDesc.MiscFlags = 0;
@@ -333,6 +344,7 @@ void CleanD3D()
 	depthStencilView->Release();
 	depthStencilBuffer->Release();
 	cbPerObjectBuffer->Release();
+	squareIndexBuffer->Release();
 	dev->Release();
 	devcon->Release();
 }
@@ -371,7 +383,7 @@ void RenderFrame()
 
 	// draw the vertex buffer to the back buffer
 	//devcon->Draw(VERT_COUNT, 0); //Only DrawIndexed works with index buffers!!!
-	devcon->DrawIndexed(6, 0, 0);
+	//devcon->DrawIndexed(6, 0, 0);
 
 	// switch the back buffer and the front buffer
 	swapchain->Present(0, 0);
@@ -414,7 +426,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     //    }
     //}
 
-	float color[4] = { 0.0f, 0.2f, 0.4f, 1.0f };
 
 	while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 	{
@@ -440,8 +451,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 					break;
 			}
 
-			UpdateScene();
-			RenderFrame();
+			else {
+				// run game code            
+				UpdateScene();
+				RenderFrame();
+			}
 		}
 	}
 
