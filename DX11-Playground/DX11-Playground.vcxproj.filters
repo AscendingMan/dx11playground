@@ -62,5 +62,11 @@
     <FxCompile Include="Effects.fx">
       <Filter>Source Files</Filter>
     </FxCompile>
+    <FxCompile Include="VertexShader.hlsl">
+      <Filter>Source Files</Filter>
+    </FxCompile>
+    <FxCompile Include="PixelShader.hlsl">
+      <Filter>Source Files</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
