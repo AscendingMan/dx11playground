@@ -23,7 +23,7 @@ cbuffer cbPerObject
 struct VOut
 {
 	float4 position : SV_POSITION;
-	float4 color : COLOR;
+	float2 texcoord : TEXCOORD0;
 };
 
 VOut main(VOut In)
@@ -31,7 +31,7 @@ VOut main(VOut In)
 	VOut output;
 
 	output.position = mul(In.position, WVP);
-	output.color = In.color;
+	//output.color = In.color;
 
 	return output;
 }

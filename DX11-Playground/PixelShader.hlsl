@@ -1,8 +1,8 @@
-//struct POut
-//{
-//	float4 position : SV_Position;
-//	float2 texcoord : TEXCOORD0;
-//};
+struct POut
+{
+	float4 position : SV_Position;
+	float2 texcoord : TEXCOORD0;
+};
 //
 struct Pixel
 {
@@ -20,15 +20,16 @@ struct Pixel
 //}
 
 
-struct POut
-{
-	float4 position : SV_Position;
-	float4 color : COLOR;
-};
+//struct POut
+//{
+//	float4 position : SV_Position;
+//	float4 color : COLOR;
+//};
 
 Pixel main(POut In)
 {
 	Pixel Out;
-	Out.color = In.color;
+	//Out.color = In.color;
+	Out.color = (1.0, 1.0, 1.0, 1.0);
 	return Out;
 }
