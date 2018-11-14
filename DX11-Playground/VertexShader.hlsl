@@ -31,6 +31,7 @@ VOut main(VOut In)
 	VOut output;
 
 	output.position = mul(In.position, WVP);
+	output.texcoord = In.texcoord;
 	//output.color = In.color;
 
 	return output;

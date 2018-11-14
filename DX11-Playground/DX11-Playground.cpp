@@ -5,6 +5,17 @@
 #include "DX11-Playground.h"
 #include <D3Dcompiler.h>
 
+///
+#include "DirectXHelpers.h"
+#include "DirectXTK\Src\pch.h"
+#include "DirectXTK\Src\PlatformHelpers.h"
+#include "DirectXTK\Src\dds.h"
+#include "DirectXTK\Src\LoaderHelpers.h"
+
+using Microsoft::WRL::ComPtr;
+using namespace DirectX;
+using namespace DirectX::LoaderHelpers;
+
 #pragma comment(lib, "D3Dcompiler.lib")
 
 using namespace DirectX;
@@ -58,6 +69,9 @@ XMMATRIX Translation;
 float rot = 0.01f;
 
 void UpdateScene();
+
+ID3D11ShaderResourceView* CubesTexture;
+ID3D11SamplerState* CubesTexSamplerState;
 
 //struct to hold the constant buffer -- must match the layout in the respective effects file
 struct cbPerObject
@@ -146,29 +160,7 @@ void InitD3D(HWND hWnd)
 	viewport.Width = SCREEN_WIDTH;
 	viewport.Height = SCREEN_HEIGHT;
 
-	//rasterizer state
-	//ID3D11RasterizerState *g_pRasterState;
-
-	//D3D11_RASTERIZER_DESC rasterizerState;
-	//rasterizerState.FillMode = D3D11_FILL_SOLID;
-	//rasterizerState.CullMode = D3D11_CULL_FRONT;
-	//rasterizerState.FrontCounterClockwise = true;
-	//rasterizerState.DepthBias = false;
-	//rasterizerState.DepthBiasClamp = 0;
-	//rasterizerState.SlopeScaledDepthBias = 0;
-	//rasterizerState.DepthClipEnable = true;
-	//rasterizerState.ScissorEnable = true;
-	//rasterizerState.MultisampleEnable = false;
-	//rasterizerState.AntialiasedLineEnable = false;
-	////rasterizerState.ForcedSampleCount = 0;
-	//dev->CreateRasterizerState(&rasterizerState, &g_pRasterState);
-	//devcon->RSSetState(g_pRasterState);
-	//
-
 	devcon->RSSetViewports(1, &viewport);
-
-
-
 
 	InitPipeline();
 	InitGraphics();
@@ -209,41 +201,67 @@ void InitGraphics()
 	// create a triangle using the VERTEX struct
 	VERTEX OurVertices[] =
 	{
-		{-1.0f, -1.0f, -1.0f, {1.0f, 0.0f}},
-		{-1.0f, +1.0f, -1.0f, {0.0f, 1.0f}},
-		{+1.0f, +1.0f, -1.0f, {0.0f, 0.0f}},
-		{+1.0f, -1.0f, -1.0f, {1.0f, 1.0f}},
-		{-1.0f, -1.0f, +1.0f, {0.0f, 1.0f}},
-		{-1.0f, +1.0f, +1.0f, {1.0f, 1.0f}},
-		{+1.0f, +1.0f, +1.0f, {1.0f, 0.0f}},
-		{+1.0f, -1.0f, +1.0f, {1.0f, 0.0f}}
+		// Front Face
+		VERTEX{-1.0f, -1.0f, -1.0f, {0.0f, 1.0f}},
+		VERTEX{-1.0f,  1.0f, -1.0f, {0.0f, 0.0f}},
+		VERTEX{1.0f,  1.0f, -1.0f, {1.0f, 0.0f}},
+		VERTEX{1.0f, -1.0f, -1.0f, {1.0f, 1.0f}},
+
+		// Back Face
+		VERTEX{-1.0f, -1.0f, 1.0f, {1.0f, 1.0f}},
+		VERTEX{1.0f, -1.0f, 1.0f, {0.0f, 1.0f}},
+		VERTEX{1.0f,  1.0f, 1.0f, {0.0f, 0.0f}},
+		VERTEX{-1.0f,  1.0f, 1.0f, {1.0f, 0.0f}},
+
+		// Top Face
+		VERTEX{-1.0f, 1.0f, -1.0f, {0.0f, 1.0f}},
+		VERTEX{-1.0f, 1.0f,  1.0f, {0.0f, 0.0f}},
+		VERTEX{1.0f, 1.0f,  1.0f, {1.0f, 0.0f}},
+		VERTEX{1.0f, 1.0f, -1.0f, {1.0f, 1.0f}},
+
+		// Bottom Face
+		VERTEX{-1.0f, -1.0f, -1.0f, {1.0f, 1.0f}},
+		VERTEX{1.0f, -1.0f, -1.0f, {0.0f, 1.0f}},
+		VERTEX{1.0f, -1.0f,  1.0f, {0.0f, 0.0f}},
+		VERTEX{-1.0f, -1.0f,  1.0f, {1.0f, 0.0f}},
+
+		// Left Face
+		VERTEX{-1.0f, -1.0f,  1.0f, {0.0f, 1.0f}},
+		VERTEX{-1.0f,  1.0f,  1.0f, {0.0f, 0.0f}},
+		VERTEX{-1.0f,  1.0f, -1.0f, {1.0f, 0.0f}},
+		VERTEX{-1.0f, -1.0f, -1.0f, {1.0f, 1.0f}},
+
+		// Right Face
+		VERTEX{1.0f, -1.0f, -1.0f, {0.0f, 1.0f}},
+		VERTEX{1.0f,  1.0f, -1.0f, {0.0f, 0.0f}},
+		VERTEX{1.0f,  1.0f,  1.0f, {1.0f, 0.0f}},
+		VERTEX{1.0f, -1.0f,  1.0f, {1.0f, 1.0f}}
 	};
 
-	//cube indices
 	DWORD indices[] = {
-		// front face
-		0, 1, 2,
-		0, 2, 3,
+		// Front Face
+		0,  1,  2,
+		0,  2,  3,
 
-		// back face
-		4, 6, 5,
-		4, 7, 6,
+		// Back Face
+		4,  5,  6,
+		4,  6,  7,
 
-		// left face
-		4, 5, 1,
-		4, 1, 0,
+		// Top Face
+		8,  9, 10,
+		8, 10, 11,
 
-		// right face
-		3, 2, 6,
-		3, 6, 7,
+		// Bottom Face
+		12, 13, 14,
+		12, 14, 15,
 
-		// top face
-		1, 5, 6,
-		1, 6, 2,
+		// Left Face
+		16, 17, 18,
+		16, 18, 19,
 
-		// bottom face
-		4, 0, 3,
-		4, 3, 7
+		// Right Face
+		20, 21, 22,
+		20, 22, 23
 	};
 
 
@@ -252,7 +270,7 @@ void InitGraphics()
 	ZeroMemory(&vertexBufferDesc, sizeof(vertexBufferDesc));
 
 	vertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;                // write access access by CPU and GPU
-	vertexBufferDesc.ByteWidth = sizeof(VERTEX) * 8;             // size is the VERTEX struct * 8
+	vertexBufferDesc.ByteWidth = sizeof(VERTEX) * 24;             // size is the VERTEX struct * 8
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;       // use as a vertex buffer
 	vertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;    // allow CPU to write in buffer
 	vertexBufferDesc.StructureByteStride = sizeof(VERTEX);
@@ -330,6 +348,43 @@ void InitGraphics()
 	devcon->Map(pVBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);    // map the buffer
 	memcpy(ms.pData, OurVertices, sizeof(OurVertices));                 // copy the data
 	devcon->Unmap(pVBuffer, NULL);                                      // unmap the buffer
+
+	Microsoft::WRL::ComPtr<ID3D11Resource> texture;
+
+	///
+	D3D11_TEXTURE2D_DESC desc;
+	desc.Width = 256;
+	desc.Height = 256;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	desc.CPUAccessFlags = 0;
+	desc.MiscFlags = 0;
+
+	///tex
+	CoInitialize(NULL);
+	HRESULT status = CreateWICTextureFromFile(dev, L"girl.dds", texture.GetAddressOf(), &CubesTexture, 1024);
+	status = SaveWICTextureToFile(devcon, *texture.GetAddressOf(), GUID_ContainerFormatBmp, L"C\:\\Users\\Ascentress\\Desktop\\SCREENSHOT.BMP");
+	//CreateDDSTextureFromFile(dev, L"girl.jpg", &texture, &CubesTexture, 1024, 0);
+	texture.Get();
+
+	// Describe the Sample State
+	D3D11_SAMPLER_DESC sampDesc;
+	ZeroMemory(&sampDesc, sizeof(sampDesc));
+	sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	sampDesc.MinLOD = 0;
+	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+	//Create the Sample State
+	dev->CreateSamplerState(&sampDesc, &CubesTexSamplerState);
+	////
 }
 
 
@@ -368,6 +423,9 @@ void RenderFrame()
 	cbPerObj.WVP = XMMatrixTranspose(WVP);
 	devcon->UpdateSubresource(cbPerObjectBuffer, 0, NULL, &cbPerObj, 0, 0);
 	devcon->VSSetConstantBuffers(0, 1, &cbPerObjectBuffer);
+
+	devcon->PSSetShaderResources(0, 1, &CubesTexture);
+	devcon->PSSetSamplers(0, 1, &CubesTexSamplerState);
 	
 	devcon->DrawIndexed(36, 0, 0);
 
@@ -375,6 +433,9 @@ void RenderFrame()
 	cbPerObj.WVP = XMMatrixTranspose(WVP);
 	devcon->UpdateSubresource(cbPerObjectBuffer, 0, NULL, &cbPerObj, 0, 0);
 	devcon->VSSetConstantBuffers(0, 1, &cbPerObjectBuffer);
+
+	devcon->PSSetShaderResources(0, 1, &CubesTexture);
+	devcon->PSSetSamplers(0, 1, &CubesTexSamplerState);
 
 	devcon->DrawIndexed(36, 0, 0);
 

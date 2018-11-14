@@ -8,6 +8,9 @@ struct Pixel
 {
 	float4 color : SV_Target;
 };
+
+Texture2D ObjTexture;
+SamplerState ObjSamplerState;
 //
 //Texture2D txDiffuse : register(t0);
 //SamplerState samLinear : register(s0);
@@ -30,6 +33,8 @@ Pixel main(POut In)
 {
 	Pixel Out;
 	//Out.color = In.color;
-	Out.color = (1.0, 1.0, 1.0, 1.0);
+	//Out.color = (1.0, 1.0, 1.0, 1.0);
+	Out.color = ObjTexture.Sample(ObjSamplerState, In.texcoord);
 	return Out;
+	//return Out;
 }
